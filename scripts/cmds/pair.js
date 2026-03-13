@@ -1,85 +1,113 @@
-const { getStreamFromURL } = global.utils;
+const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
+
+const baseApiUrl = async () => {
+        const base = await axios.get("https://raw.githubusercontent.com/mahmudx7/exe/main/baseApiUrl.json");
+        return base.data.mahmud;
+};
 
 module.exports = {
-  config: {
-    name: "pair",
-    version: "1.7",
-    author: "MahMUD",
-    category: "love",
-    guide: "{prefix}pair"
-  },
+        config: {
+                name: "pair",
+                version: "1.7",
+                author: "MahMUD",
+                countDown: 10,
+                role: 0,
+                description: {
+                        bn: "গ্রুপের মেম্বারদের মধ্যে আপনার পারফেক্ট ম্যাচ খুঁজুন",
+                        en: "Find your perfect match among group members",
+                        vi: "Tìm mảnh ghép hoàn hảo của bạn trong số các thành viên nhóm"
+                },
+                category: "love",
+                guide: {
+                        bn: '   {pn}: আপনার ম্যাচ খুঁজে পেতে ব্যবহার করুন',
+                        en: '   {pn}: Use to find your match',
+                        vi: '   {pn}: Sử dụng để tìm cặp đôi của bạn'
+                }
+        },
 
-  onStart: async function ({ event, threadsData, message, usersData, api }) {
-    const obfuscatedAuthor = String.fromCharCode(77, 97, 104, 77, 85, 68); 
-    if (module.exports.config.author !== obfuscatedAuthor) {
-      return api.sendMessage("You are not authorized to change the author name.\n", event.threadID, event.messageID);
-    }
+        langs: {
+                bn: {
+                        noGender: "× বেবি, আপনার জেন্ডার প্রোফাইলে সেট করা নেই",
+                        noMatch: "× দুঃখিত, এই গ্রুপে আপনার জন্য কোনো ম্যাচ পাওয়া যায়নি",
+                        success: "💞 𝐒𝐮𝐜𝐜𝐞𝐬𝐬𝐟𝐮𝐥 𝐏𝐚𝐢𝐫𝐢𝐧𝐠\n• %1\n• %2\n\n𝐋𝐨𝐯𝐞 𝐏𝐞𝐫𝐜𝐞𝐧𝐭𝐚𝐠𝐞: %3%",
+                        error: "× সমস্যা হয়েছে: %1। প্রয়োজনে Contact MahMUD।"
+                },
+                en: {
+                        noGender: "× Baby, your gender is not defined in your profile",
+                        noMatch: "× Sorry, no match found for you in this group",
+                        success: "💞 𝐒𝐮𝐜𝐜𝐞𝐬𝐬𝐟𝐮𝐥 𝐏𝐚𝐢𝐫𝐢𝐧𝐠\n• %1\n• %2\n\n𝐋𝐨𝐯𝐞 𝐏𝐞𝐫𝐜𝐞𝐧𝐭𝐚𝐠𝐞: %3%",
+                        error: "× API error: %1. Contact MahMUD for help."
+                },
+                vi: {
+                        noGender: "× Cưng ơi, giới tính của cưng không được xác định",
+                        noMatch: "× Rất tiếc, không tìm thấy mảnh ghép nào cho cưng",
+                        success: "💞 𝐆𝐡𝐞́𝐩 đ𝐨̂𝐢 𝐭𝐡𝐚̀𝐧𝐡 𝐜𝐨̂𝐧𝐠\n• %1\n• %2\n\n𝐓𝐲̉ 𝐥𝐞̣̂ 𝐭𝐢̀𝐧𝐡 𝐜𝐚̉𝐦: %3%",
+                        error: "× Lỗi: %1. Liên hệ MahMUD để hỗ trợ."
+                }
+        },
 
-    const uidI = event.senderID;
-    const name1 = await usersData.getName(uidI);
-    const avatarUrl1 = await usersData.getAvatarUrl(uidI);
-    const threadData = await threadsData.get(event.threadID);
+        onStart: async function ({ api, event, message, getLang }) {
+                const authorName = String.fromCharCode(77, 97, 104, 77, 85, 68);
+                if (this.config.author !== authorName) {
+                        return api.sendMessage("You are not authorized to change the author name.", event.threadID, event.messageID);
+                }
 
-    const senderInfo = threadData.members.find(mem => mem.userID == uidI);
-    const gender1 = senderInfo?.gender;
+                const outputPath = path.join(__dirname, "cache", `pair_${event.senderID}_${Date.now()}.png`);
+                if (!fs.existsSync(path.dirname(outputPath))) fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 
-    if (!gender1 || (gender1 !== "MALE" && gender1 !== "FEMALE")) {
-      return message.reply("❌ Couldn't determine your gender. Please update your profile.");
-    }
+                try {
+                        api.setMessageReaction("😘", event.messageID, () => {}, true);
 
-    const oppositeGender = gender1 === "MALE" ? "FEMALE" : "MALE";
+                        const threadData = await api.getThreadInfo(event.threadID);
+                        const users = threadData.userInfo;
+                        const myData = users.find((u) => u.id === event.senderID);
 
-    const candidates = threadData.members.filter(
-      member => member.gender === oppositeGender && member.inGroup && member.userID !== uidI
-    );
+                        if (!myData || !myData.gender) return message.reply(getLang("noGender"));
 
-    if (candidates.length === 0) {
-      return message.reply(`❌ No ${oppositeGender.toLowerCase()} members found in this group.`);
-    }
+                        const myGender = myData.gender.toUpperCase();
+                        let matchCandidates = [];
 
-    const matched = candidates[Math.floor(Math.random() * candidates.length)];
+                        if (myGender === "MALE") {
+                                matchCandidates = users.filter((u) => u.gender === "FEMALE" && u.id !== event.senderID);
+                        } else if (myGender === "FEMALE") {
+                                matchCandidates = users.filter((u) => u.gender === "MALE" && u.id !== event.senderID);
+                        } else {
+                                matchCandidates = users.filter((u) => u.id !== event.senderID);
+                        }
+                        
+                        if (matchCandidates.length === 0) {
+                                api.setMessageReaction("🥺", event.messageID, () => {}, true);
+                                return message.reply(getLang("noMatch"));
+                        }
 
-    const name2 = await usersData.getName(matched.userID);
-    const avatarUrl2 = await usersData.getAvatarUrl(matched.userID);
+                        const selectedMatch = matchCandidates[Math.floor(Math.random() * matchCandidates.length)];
+                        const apiUrl = await baseApiUrl();
+                        
+                        const { data } = await axios.get(`${apiUrl}/api/pair/mahmud?user1=${event.senderID}&user2=${selectedMatch.id}&style=1`, { 
+                                responseType: "arraybuffer" 
+                        });
 
-    const lovePercent = Math.floor(Math.random() * 36) + 65;
-    const compatibility = Math.floor(Math.random() * 36) + 65;
+                        fs.writeFileSync(outputPath, Buffer.from(data));
 
-    function toBoldUnicode(name) {
-      const boldAlphabet = {
-        "a": "𝐚", "b": "𝐛", "c": "𝐜", "d": "𝐝", "e": "𝐞", "f": "𝐟", "g": "𝐠", "h": "𝐡", "i": "𝐢", "j": "𝐣",
-        "k": "𝐤", "l": "𝐥", "m": "𝐦", "n": "𝐧", "o": "𝐨", "p": "𝐩", "q": "𝐪", "r": "𝐫", "s": "𝐬", "t": "𝐭",
-        "u": "𝐮", "v": "𝐯", "w": "𝐰", "x": "𝐱", "y": "𝐲", "z": "𝐳", "A": "𝐀", "B": "𝐁", "C": "𝐂", "D": "𝐃",
-        "E": "𝐄", "F": "𝐅", "G": "𝐆", "H": "𝐇", "I": "𝐈", "J": "𝐉", "K": "𝐊", "L": "𝐋", "M": "𝐌", "N": "𝐍",
-        "O": "𝐎", "P": "𝐏", "Q": "𝐐", "R": "𝐑", "S": "𝐒", "T": "𝐓", "U": "𝐔", "V": "𝐕", "W": "𝐖", "X": "𝐗",
-        "Y": "𝐘", "Z": "𝐙", "0": "0", "1": "1", "2": "2", "3": "3", "4": "4", "5": "5", "6": "6", "7": "7", "8": "8",
-        "9": "9", " ": " ", "'": "'", ",": ",", ".": ".", "-": "-", "!": "!", "?": "?"
-      };
-      return name.split('').map(char => boldAlphabet[char] || char).join('');
-    }
+                        const name1 = myData.name || "User";
+                        const name2 = selectedMatch.name || "Partner";
+                        const percentage = Math.floor(Math.random() * 100) + 1;
 
-    const styledName1 = toBoldUnicode(name1);
-    const styledName2 = toBoldUnicode(name2);
+                        return message.reply({
+                                body: getLang("success", name1, name2, percentage),
+                                attachment: fs.createReadStream(outputPath)
+                        }, () => {
+                                api.setMessageReaction("✅", event.messageID, () => {}, true);
+                                if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+                        });
 
-    const styledMessage = `
-💖✨ 𝗡𝗲𝘄 𝗣𝗮𝗶𝗿 𝗔𝗹𝗲𝗿𝘁! ✨💖
-
-🎉 𝐄𝐯𝐞𝐫𝐲𝐨𝐧𝐞, 𝐥𝐞𝐭'𝐬 𝐜𝐨𝐧𝐠𝐫𝐚𝐭𝐮𝐥𝐚𝐭𝐞 𝐨𝐮𝐫 𝐥𝐨𝐯𝐞𝐥𝐲 𝐧𝐞𝐰 𝐜𝐨𝐮𝐩𝐥𝐞
-
-• ${styledName1}  
-• ${styledName2}
-
-❤  𝐋𝐨𝐯𝐞 𝐏𝐞𝐫𝐜𝐞𝐧𝐭𝐚𝐠𝐞: ${lovePercent}%  
-🌟 𝐂𝐨𝐦𝐩𝐚𝐭𝐢𝐛𝐢𝐥𝐢𝐭𝐲: ${compatibility}%
-
-💍 𝐌𝐚𝐲 𝐲𝐨𝐮𝐫 𝐥𝐨𝐯𝐞 𝐛𝐥𝐨𝐨𝐦 𝐟𝐨𝐫𝐞𝐯𝐞𝐫`;
-
-    return message.reply({
-      body: styledMessage,
-      attachment: [
-        await getStreamFromURL(avatarUrl1),
-        await getStreamFromURL(avatarUrl2)
-      ]
-    });
-  }
+                } catch (err) {
+                        console.error("Pair Error:", err);
+                        api.setMessageReaction("❌", event.messageID, () => {}, true);
+                        if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+                        return message.reply(getLang("error", err.message));
+                }
+        }
 };
