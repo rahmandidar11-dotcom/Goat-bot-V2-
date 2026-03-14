@@ -1,55 +1,99 @@
-const axios = require ("axios");
-const fs = require ("fs-extra");
+module.exports.config = {
+ name: "pair",
+ version: "1.0.1",
+ hasPermssion: 0,
+ credits: "𝐂𝐘𝐁𝐄𝐑 ☢️_𖣘 -𝐁𝐎𝐓 ⚠️ 𝑻𝑬𝑨𝑴_ ☢️",
+ description: "Pair two users with a fun compatibility score",
+ commandCategory: "Picture",
+ cooldowns: 5,
+ dependencies: {
+ "axios": "",
+ "fs-extra": "",
+ "jimp": ""
+ }
+};
 
-module.exports = {
-  config: {
-    name: "pair",
-    aliases: [],
-    version: "1.0",
-    author: "nexo_here",
-    countDown: 5,
-    role: 0,
-    shortDescription: " ",
-    longDescription: "",
-    category: "fun",
-    guide: "{pn}"
-  },
+module.exports.onLoad = async () => {
+ const { resolve } = global.nodemodule["path"];
+ const { existsSync, mkdirSync } = global.nodemodule["fs-extra"];
+ const { downloadFile } = global.utils;
+ const dirMaterial = __dirname + `/cache/canvas/`;
+ const path = resolve(__dirname, 'cache/canvas', 'pairing.png');
+ if (!existsSync(dirMaterial + "canvas")) mkdirSync(dirMaterial, { recursive: true });
+ if (!existsSync(path)) await downloadFile("https://i.postimg.cc/X7R3CLmb/267378493-3075346446127866-4722502659615516429-n.png", path);
+};
 
-  onStart: async function({ api, event, threadsData, usersData }) {
+async function makeImage({ one, two }) {
+ const fs = global.nodemodule["fs-extra"];
+ const path = global.nodemodule["path"];
+ const axios = global.nodemodule["axios"];
+ const jimp = global.nodemodule["jimp"];
+ const __root = path.resolve(__dirname, "cache", "canvas");
 
-    const { threadID, messageID, senderID } = event;
-    const { participantIDs } = await api.getThreadInfo(threadID);
-    var tle = Math.floor(Math.random() * 101);
-    var namee = (await usersData.get(senderID)).name
-    const botID = api.getCurrentUserID();
-    const listUserID = participantIDs.filter(ID => ID != botID && ID != senderID);
-    var id = listUserID[Math.floor(Math.random() * listUserID.length)];
-    var name = (await usersData.get(id)).name
-    var arraytag = [];
-    arraytag.push({ id: senderID, tag: namee });
-    arraytag.push({ id: id, tag: name });
+ let pairing_img = await jimp.read(__root + "/pairing.png");
+ let pathImg = __root + `/pairing_${one}_${two}.png`;
+ let avatarOne = __root + `/avt_${one}.png`;
+ let avatarTwo = __root + `/avt_${two}.png`;
 
-    let Avatar = (await axios.get(`https://graph.facebook.com/${senderID}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`, { responseType: "arraybuffer" })).data;
-    fs.writeFileSync(__dirname + "/cache/avt.png", Buffer.from(Avatar, "utf-8"));
+ let getAvatarOne = (await axios.get(`https://graph.facebook.com/${one}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`, { responseType: 'arraybuffer' })).data;
+ fs.writeFileSync(avatarOne, Buffer.from(getAvatarOne, 'utf-8'));
 
-    let gifLove = (await axios.get(`https://i.ibb.co/y4dWfQq/image.gif`, { responseType: "arraybuffer" })).data;
-    fs.writeFileSync(__dirname + "/cache/giflove.png", Buffer.from(gifLove, "utf-8"));
+ let getAvatarTwo = (await axios.get(`https://graph.facebook.com/${two}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`, { responseType: 'arraybuffer' })).data;
+ fs.writeFileSync(avatarTwo, Buffer.from(getAvatarTwo, 'utf-8'));
 
-    let Avatar2 = (await axios.get(`https://graph.facebook.com/${id}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`, { responseType: "arraybuffer" })).data;
-    fs.writeFileSync(__dirname + "/cache/avt2.png", Buffer.from(Avatar2, "utf-8"));
+ let circleOne = await jimp.read(await circle(avatarOne));
+ let circleTwo = await jimp.read(await circle(avatarTwo));
+ pairing_img.composite(circleOne.resize(150, 150), 980, 200).composite(circleTwo.resize(150, 150), 140, 200);
 
-    var imglove = [];
+ let raw = await pairing_img.getBufferAsync("image/png");
 
-    imglove.push(fs.createReadStream(__dirname + "/cache/avt.png"));
-    imglove.push(fs.createReadStream(__dirname + "/cache/giflove.png"));
-    imglove.push(fs.createReadStream(__dirname + "/cache/avt2.png"));
+ fs.writeFileSync(pathImg, raw);
+ fs.unlinkSync(avatarOne);
+ fs.unlinkSync(avatarTwo);
 
-    var msg = {
-      body: `🥰Successful pairing!\n💌Wish you two hundred years of happiness\n💕Double ratio: ${tle}%\n${namee} 💓 ${name}`,
-      mentions: arraytag,
-      attachment: imglove
-    };
+ return pathImg;
+}
 
-    return api.sendMessage(msg, event.threadID, event.messageID);
-  }
+async function circle(image) {
+ const jimp = require("jimp");
+ image = await jimp.read(image);
+ image.circle();
+ return await image.getBufferAsync("image/png");
+}
+
+module.exports.run = async function ({ api, event }) {
+ const axios = require("axios");
+ const fs = require("fs-extra");
+ const { threadID, messageID, senderID } = event;
+
+ // Match percentage
+ const percentages = ['21%', '67%', '19%', '37%', '17%', '96%', '52%', '62%', '76%', '83%', '100%', '99%', '0%', '48%'];
+ const matchRate = percentages[Math.floor(Math.random() * percentages.length)];
+
+ // Sender info
+ let senderInfo = await api.getUserInfo(senderID);
+ let senderName = senderInfo[senderID].name;
+
+ // Random partner
+ let threadInfo = await api.getThreadInfo(threadID);
+ let participants = threadInfo.participantIDs.filter(id => id !== senderID);
+ let partnerID = participants[Math.floor(Math.random() * participants.length)];
+ let partnerInfo = await api.getUserInfo(partnerID);
+ let partnerName = partnerInfo[partnerID].name;
+
+ // Mentions
+ let mentions = [
+ { id: senderID, tag: senderName },
+ { id: partnerID, tag: partnerName }
+ ];
+
+ // Generate and send image
+ let one = senderID, two = partnerID;
+ return makeImage({ one, two }).then(path => {
+ api.sendMessage({
+ body: `🥰 Successful Pairing!\n💌 Wishing you two a lifetime of unexpected happiness – even with a ${matchRate} match!\n💕 Compatibility Score: ${matchRate}\nUnlikely but Unstoppable: [${senderName} + ${partnerName}]👨‍❤️‍👨`,
+ mentions,
+ attachment: fs.createReadStream(path)
+ }, threadID, () => fs.unlinkSync(path), messageID);
+ });
 };
