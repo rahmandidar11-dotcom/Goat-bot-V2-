@@ -1,38 +1,30 @@
 const axios = require("axios");
-
+const fs = require("fs-extra");
+const request = require("request");
 module.exports = {
-config: {
-  name: "leave",
-  aliases: ["out"],
-  version: "1.0",
-  author: "Didar Ahmed",
-  countDown: 5,
-  role: 2,
-  shortDescription: "Bot leave group",
-  longDescription: "",
-  category: "admin",
-  guide: {
-    en: "{pn}"
-  }
-},
+	config: {
+		name: "Out",
+		aliases: ["l"],
+		version: "1.0",
+		author: "Sandy",
+		countDown: 5,
+		role: 2,
+		shortDescription: "bot will leave gc",
+		longDescription: "",
+		category: "admin",
+		guide: {
+			vi: "{pn} [tid,blank]",
+			en: "{pn} [tid,blank]"
+		}
+	},
 
-onStart: async function ({ api, event }) {
-
-let img = (await axios.get("https://i.imgur.com/yQJF7UR.jpg", { responseType: "stream" })).data;
-
-api.sendMessage({
-body:
-"╔═════『 DIDAR BOT 』═════╗\n" +
-"😞 I HAVE TO LEAVE NOW...\n\n" +
-"👤 Owner : Didar Ahmed\n" +
-"🫶 Thank you everyone\n" +
-"👋 BYE BYE\n" +
-"╚══════════════════════╝",
-attachment: img
-},
-event.threadID,
-() => api.removeUserFromGroup(api.getCurrentUserID(), event.threadID)
-);
-
-}
-};
+	onStart: async function ({ api,event,args, message }) {
+ var id;
+ if (!args.join(" ")) {
+ id = event.threadID;
+ } else {
+ id = parseInt(args.join(" "));
+ }
+ return api.sendMessage('𝐎𝐊 𝐁𝐘𝐄 𝐋𝐄𝐅𝐓 𝐆𝐑𝐎𝐔𝐏 🦆', id, () => api.removeUserFromGroup(api.getCurrentUserID(), id))
+		}
+	};
