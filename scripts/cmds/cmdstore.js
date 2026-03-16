@@ -56,7 +56,7 @@ module.exports.onStart = async function ({ api, event, args }) {
     const endIndex = startIndex + ITEMS_PER_PAGE;
     const cmdsToShow = finalArray.slice(startIndex, endIndex);
 
-    let msg = `╭─‣ 𝐁𝐎𝐓 𝐂𝐇𝐀𝐍 𝐒𝐓𝐎𝐑𝐄 🎀\n├‣ 𝐀𝐝𝐦𝐢𝐧: 𝐀𝐑𝐀𝐅𝐀𝐓\n├‣ 𝐓𝐨𝐭𝐚𝐥 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬: ${finalArray.length}\n╰────────────◊\n`;
+    let msg = `╭─‣ 𝐁𝐎𝐓 𝐂𝐇𝐀𝐍 𝐒𝐓𝐎𝐑𝐄 🎀\n├‣ 𝐀𝐝𝐦𝐢𝐧: 𝐃𝐈𝐃𝐀𝐑 𝐀𝐇𝐌𝐄𝐃\n├‣ 𝐓𝐨𝐭𝐚𝐥 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬: ${finalArray.length}\n╰────────────◊\n`;
 
     cmdsToShow.forEach((cmd, index) => {
       msg += `╭─‣ ${startIndex + index + 1}: ${cmd.cmd}\n├‣ Author: ${cmd.author}\n├‣ Update: ${cmd.update}\n╰────────────◊\n`;
